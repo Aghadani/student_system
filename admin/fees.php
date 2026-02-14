@@ -4,7 +4,6 @@ require_once '../includes/auth_check.php';
 
 $message = '';
 
-// Handle Fee Payment
 if (isset($_POST['pay_fee'])) {
     $student_id = $_POST['student_id'];
     $fee_type = $_POST['fee_type'];
@@ -20,28 +19,50 @@ if (isset($_POST['pay_fee'])) {
 include '../includes/header.php';
 ?>
 
-<div class="container-fluid">
+<style>
+    .stylish-header-bar {
+        background: rgba(255, 255, 255, 0.95);
+        backdrop-filter: blur(10px);
+        border-radius: 20px;
+        padding: 20px 35px;
+        margin-bottom: 30px;
+        display: flex;
+        justify-content: space-between;
+        align-items: center;
+        box-shadow: 0 10px 30px rgba(0,0,0,0.2);
+    }
+    .black-title { color: #000; font-weight: 800; font-size: 2.2rem; letter-spacing: -1.8px; margin: 0; }
+    .main-card { background: #fff; border-radius: 28px; overflow: hidden; box-shadow: 0 15px 40px rgba(0,0,0,0.4); border: none; }
+    .table thead th { background: #000; color: #fff; padding: 18px; text-transform: uppercase; font-size: 0.75rem; letter-spacing: 1px; }
+    .badge-paid { background: #e3fcef; color: #00a854; border: 1px solid #b7eb8f; padding: 5px 12px; border-radius: 50px; }
+    .badge-unpaid { background: #fff1f0; color: #f5222d; border: 1px solid #ffa39e; padding: 5px 12px; border-radius: 50px; }
+</style>
+
+<div class="container py-4">
     <?php if ($message): ?>
-        <div class="alert alert-success"><?php echo $message; ?></div>
+        <div class="alert alert-success border-0 shadow-sm rounded-4"><?php echo $message; ?></div>
     <?php endif; ?>
 
-    <div class="d-flex justify-content-between align-items-center mb-3">
-        <h3>Fees Management</h3>
+    <div class="stylish-header-bar">
+        <div>
+            <h2 class="black-title">Fees Management</h2>
+            <p class="text-muted small mb-0">Track admissions and monthly tuition status</p>
+        </div>
     </div>
 
-    <div class="card shadow">
-        <div class="card-body p-0">
-            <table class="table table-hover mb-0">
-                <thead class="table-light">
+    <div class="main-card">
+        <div class="table-responsive">
+            <table class="table table-hover align-middle mb-0">
+                <thead>
                     <tr>
-                        <th>Student Name</th>
+                        <th class="ps-4">Student Name</th>
                         <th>Class</th>
-                        <th>Admission Fee</th>
+                        <th>Admission</th>
                         <th>Monthly Fee</th>
-                        <th>Actions</th>
+                        <th class="text-center">Actions</th>
                     </tr>
                 </thead>
-                <tbody>
+                <tbody style="color:#000; font-weight: 600;">
                     <?php
                     $students = $pdo->query("
                         SELECT s.id, s.name, c.class_name,
@@ -54,37 +75,23 @@ include '../includes/header.php';
                     foreach ($students as $s):
                     ?>
                     <tr>
-                        <td><?php echo htmlspecialchars($s['name']); ?></td>
-                        <td><?php echo htmlspecialchars($s['class_name']); ?></td>
-                        <td>
-                            <?php if ($s['admission_status'] == 'Paid'): ?>
-                                <span class="badge bg-success">Paid</span>
-                            <?php else: ?>
-                                <span class="badge bg-danger">Unpaid</span>
-                            <?php endif; ?>
-                        </td>
-                        <td>
-                            <?php if ($s['monthly_status'] == 'Paid'): ?>
-                                <span class="badge bg-success">Paid</span>
-                            <?php else: ?>
-                                <span class="badge bg-danger">Unpaid</span>
-                            <?php endif; ?>
-                        </td>
-                        <td>
+                        <td class="ps-4"><?php echo htmlspecialchars($s['name']); ?></td>
+                        <td><span class="badge bg-light text-dark border"><?php echo htmlspecialchars($s['class_name']); ?></span></td>
+                        <td><?php echo ($s['admission_status'] == 'Paid') ? '<span class="badge-paid">Paid</span>' : '<span class="badge-unpaid">Unpaid</span>'; ?></td>
+                        <td><?php echo ($s['monthly_status'] == 'Paid') ? '<span class="badge-paid">Paid</span>' : '<span class="badge-unpaid">Unpaid</span>'; ?></td>
+                        <td class="text-center">
                             <div class="btn-group">
-                                <button type="button" class="btn btn-sm btn-primary dropdown-toggle" data-bs-toggle="dropdown">
-                                    Pay Fee
-                                </button>
-                                <ul class="dropdown-menu">
+                                <button type="button" class="btn btn-sm btn-dark dropdown-toggle rounded-pill px-3" data-bs-toggle="dropdown">Pay Fee</button>
+                                <ul class="dropdown-menu shadow border-0">
                                     <li>
-                                        <form method="POST" style="display:inline;">
+                                        <form method="POST">
                                             <input type="hidden" name="student_id" value="<?php echo $s['id']; ?>">
                                             <input type="hidden" name="fee_type" value="Admission">
                                             <button type="submit" name="pay_fee" class="dropdown-item" <?php echo $s['admission_status'] == 'Paid' ? 'disabled' : ''; ?>>Admission (800)</button>
                                         </form>
                                     </li>
                                     <li>
-                                        <form method="POST" style="display:inline;">
+                                        <form method="POST">
                                             <input type="hidden" name="student_id" value="<?php echo $s['id']; ?>">
                                             <input type="hidden" name="fee_type" value="Monthly">
                                             <button type="submit" name="pay_fee" class="dropdown-item">Monthly (3000)</button>
@@ -92,7 +99,7 @@ include '../includes/header.php';
                                     </li>
                                 </ul>
                             </div>
-                            <a href="receipts.php?student_id=<?php echo $s['id']; ?>" class="btn btn-sm btn-info text-white">View Receipts</a>
+                            <a href="receipts.php?student_id=<?php echo $s['id']; ?>" class="btn btn-sm btn-outline-primary rounded-pill px-3 ms-2">History</a>
                         </td>
                     </tr>
                     <?php endforeach; ?>
@@ -101,5 +108,4 @@ include '../includes/header.php';
         </div>
     </div>
 </div>
-
 <?php include '../includes/footer.php'; ?>
