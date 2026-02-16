@@ -2,26 +2,30 @@
 require_once '../config.php';
 require_once '../includes/auth_check.php';
 
-// 1. Capture variables from URL safely (The ?? null prevents the Warning)
-// This was line 14 - now fixed to check if key exists first
-$student_id = $_GET['student_id'] ?? null;
-$receipt_id = $_GET['print'] ?? null;
+// 1. SAFE VARIABLE CAPTURE (Prevents the Line 14 Warning)
+$student_id = isset($_GET['student_id']) ? $_GET['student_id'] : null;
+$receipt_id = isset($_GET['print']) ? $_GET['print'] : null;
 
 // --- MODE 1: PRINTING A SPECIFIC RECEIPT ---
 if ($receipt_id) {
-    // SQL query to fetch all details including Father Name and Class
+    // 2. DETAILED SQL QUERY
+    // Ensure 'father_name' exists in your 'students' table
     $stmt = $pdo->prepare("
-        SELECT f.*, s.id as sid, s.name as student_name, s.father_name, c.class_name 
+        SELECT f.*, 
+               s.id as sid, 
+               s.name as student_name, 
+               s.father_name as f_name, 
+               c.class_name 
         FROM fees f 
-        JOIN students s ON f.student_id = s.id 
-        JOIN classes c ON s.class_id = c.id 
+        LEFT JOIN students s ON f.student_id = s.id 
+        LEFT JOIN classes c ON s.class_id = c.id 
         WHERE f.id = ?
     ");
     $stmt->execute([$receipt_id]);
     $r = $stmt->fetch();
 
     if (!$r) {
-        die("<div style='text-align:center; padding:50px;'><h1>Receipt Not Found</h1><a href='fees.php'>Back</a></div>");
+        die("Receipt ID #$receipt_id not found.");
     }
 
     $copies = ['Office Copy', 'Student Copy', 'Teacher Copy'];
@@ -33,128 +37,94 @@ if ($receipt_id) {
         <title>Receipt_<?php echo $r['receipt_number']; ?></title>
         <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/css/bootstrap.min.css" rel="stylesheet">
         <style>
-            @import url('https://fonts.googleapis.com/css2?family=Inter:wght@400;600;700;800&display=swap');
-            body { font-family: 'Inter', sans-serif; background: #fff; color: #000; font-size: 12px; }
+            body { font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif; background: #fff; color: #000; }
             @page { size: A4 landscape; margin: 5mm; }
-            
-            .no-print-nav { background: #343a40; padding: 10px; text-align: center; color: white; margin-bottom: 20px; }
-            .receipt-wrapper { display: flex; flex-direction: row; justify-content: space-between; gap: 15px; padding: 10px; }
-            
+            .no-print-nav { background: #eee; padding: 10px; text-align: center; border-bottom: 1px solid #ccc; }
+            .receipt-wrapper { display: flex; gap: 15px; padding: 10px; }
             .receipt-box { 
-                flex: 1; 
-                border: 2px solid #000; 
-                padding: 20px; 
-                position: relative; 
-                min-height: 170mm; 
-                display: flex; 
-                flex-direction: column;
-                border-radius: 10px;
+                flex: 1; border: 2px solid #000; padding: 15px; border-radius: 8px;
+                display: flex; flex-direction: column; min-height: 175mm;
             }
-
-            .copy-tag { 
-                background: #000; color: #fff; font-size: 10px; 
-                padding: 3px 10px; position: absolute; top: 0; right: 20px; 
-                font-weight: bold; border-radius: 0 0 5px 5px;
-            }
-
-            .header-section { text-align: center; border-bottom: 2px solid #000; margin-bottom: 15px; padding-bottom: 10px; }
-            .logo-img { width: 50px; height: 50px; border-radius: 50%; margin-bottom: 5px; }
-            .school-name { font-size: 16px; font-weight: 800; margin: 0; text-transform: uppercase; letter-spacing: 1px; }
+            .header { text-align: center; border-bottom: 2px solid #000; margin-bottom: 15px; }
+            .school-title { font-weight: 900; font-size: 16px; margin: 0; text-transform: uppercase; }
             
-            /* Two columns per row layout */
-            .info-row { display: flex; justify-content: space-between; margin-bottom: 12px; border-bottom: 1px solid #eee; padding-bottom: 4px; }
-            .info-item { flex: 1; }
+            /* Grid Layout for details */
+            .detail-row { display: flex; justify-content: space-between; margin-bottom: 10px; }
+            .detail-col { flex: 1; border-bottom: 1px solid #ddd; padding-bottom: 2px; }
             
-            .label { font-size: 9px; color: #555; text-transform: uppercase; font-weight: 700; display: block; }
-            .value { font-size: 13px; font-weight: 600; color: #000; }
-
-            .amount-section { 
-                background: #f8f9fa; 
-                border: 2px solid #000; 
-                padding: 15px; 
-                text-align: center; 
-                margin-top: 20px;
-                border-radius: 8px;
+            .label { font-size: 10px; font-weight: bold; color: #444; text-transform: uppercase; display: block; }
+            .value { font-size: 13px; font-weight: 600; }
+            
+            .amount-box { 
+                margin-top: 20px; background: #f9f9f9; border: 2px solid #000; 
+                padding: 10px; text-align: center; border-radius: 5px; 
             }
-            .amount-text { font-size: 20px; font-weight: 800; }
-
-            .footer-sign { 
-                margin-top: auto; 
-                display: flex; 
-                justify-content: space-between; 
-                align-items: flex-end;
-                padding-top: 20px;
-            }
-            .sign-box { border-top: 1.5px solid #000; width: 120px; text-align: center; font-weight: 700; font-size: 10px; padding-top: 5px; }
-
-            @media print { .no-print-nav { display: none; } body { padding: 0; } }
+            .footer { margin-top: auto; display: flex; justify-content: space-between; padding-top: 30px; }
+            .sign-line { border-top: 1px solid #000; width: 120px; text-align: center; font-size: 11px; font-weight: bold; }
+            @media print { .no-print-nav { display: none; } }
         </style>
     </head>
     <body onload="window.print()">
         <div class="no-print-nav">
-            <button onclick="window.print()" class="btn btn-light btn-sm fw-bold">Click to Print Receipt</button>
-            <a href="receipts.php?student_id=<?php echo $r['student_id']; ?>" class="btn btn-outline-light btn-sm ms-3">Back to Ledger</a>
+            <button onclick="window.print()" class="btn btn-dark btn-sm">PRINT RECEIPT</button>
+            <a href="receipts.php?student_id=<?php echo $r['student_id']; ?>" class="btn btn-secondary btn-sm">BACK TO LEDGER</a>
         </div>
 
         <div class="receipt-wrapper">
             <?php foreach ($copies as $copy): ?>
             <div class="receipt-box">
-                <div class="copy-tag"><?php echo $copy; ?></div>
-                
-                <div class="header-section">
-                    <img src="../uploads/Logo Web.png" class="logo-img">
-                    <h1 class="school-name">AI Future Leaders Academy</h1>
-                    <small>Education for a Better Tomorrow</small>
+                <div class="header">
+                    <img src="../uploads/Logo Web.png" style="width:50px; border-radius:50%;">
+                    <h1 class="school-title">AI FUTURE LEADERS ACADEMY</h1>
+                    <div style="font-size:10px; font-weight:bold;"><?php echo $copy; ?></div>
                 </div>
-                
-                <div class="info-row">
-                    <div class="info-item">
-                        <span class="label">Receipt Number</span>
+
+                <div class="detail-row">
+                    <div class="detail-col">
+                        <span class="label">Receipt No</span>
                         <span class="value">#<?php echo $r['receipt_number']; ?></span>
                     </div>
-                    <div class="info-item text-end">
+                    <div class="detail-col text-end">
                         <span class="label">Student ID</span>
                         <span class="value">STU-<?php echo $r['sid']; ?></span>
                     </div>
                 </div>
 
-                <div class="info-row">
-                    <div class="info-item">
+                <div class="detail-row">
+                    <div class="detail-col">
                         <span class="label">Student Name</span>
-                        <span class="value text-uppercase"><?php echo htmlspecialchars($r['student_name']); ?></span>
+                        <span class="value"><?php echo strtoupper($r['student_name']); ?></span>
                     </div>
-                    <div class="info-item text-end">
-                        <span class="label">Father's Name</span>
-                        <span class="value text-uppercase"><?php echo htmlspecialchars($r['father_name'] ?? 'N/A'); ?></span>
+                    <div class="detail-col text-end">
+                        <span class="label">Father Name</span>
+                        <span class="value"><?php echo strtoupper($r['f_name'] ?? 'N/A'); ?></span>
                     </div>
                 </div>
 
-                <div class="info-row">
-                    <div class="info-item">
+                <div class="detail-row">
+                    <div class="detail-col">
                         <span class="label">Class / Grade</span>
-                        <span class="value"><?php echo htmlspecialchars($r['class_name']); ?></span>
+                        <span class="value"><?php echo $r['class_name']; ?></span>
                     </div>
-                    <div class="info-item text-end">
+                    <div class="detail-col text-end">
                         <span class="label">Payment Date</span>
-                        <span class="value"><?php echo date('d-M-Y', strtotime($r['payment_date'])); ?></span>
+                        <span class="value"><?php echo date('d-m-Y', strtotime($r['payment_date'])); ?></span>
                     </div>
                 </div>
 
-                <div class="info-row" style="border: none;">
-                    <div class="info-item">
-                        <span class="label">Fee Category</span>
-                        <span class="value"><?php echo ($r['amount'] == 800) ? "Admission Fee (One-Time)" : "Monthly Tuition Fee"; ?></span>
-                    </div>
+                <div class="mt-3">
+                    <span class="label">Fee Category</span>
+                    <span class="value"><?php echo ($r['amount'] == 800) ? "One-Time Admission Fee" : "Monthly Tuition Fee"; ?></span>
                 </div>
 
-                <div class="amount-section">
-                    <span class="label">Total Amount Paid</span>
-                    <div class="amount-text"><?php echo number_format($r['amount']); ?> PKR</div>
+                <div class="amount-box">
+                    <span class="label">Net Amount Paid</span>
+                    <div style="font-size: 24px; font-weight: 900;"><?php echo number_format($r['amount']); ?> PKR</div>
                 </div>
 
-                <div class="footer-sign">
-                    <div style="font-size: 9px; color: #777;">Generated on: <?php echo date('d/m/Y H:i'); ?></div>
-                    <div class="sign-box">Cashier Signature</div>
+                <div class="footer">
+                    <div style="font-size: 9px;">System Generated</div>
+                    <div class="sign-line">Authorized Sign</div>
                 </div>
             </div>
             <?php endforeach; ?>
@@ -165,56 +135,48 @@ if ($receipt_id) {
     exit;
 }
 
-// --- MODE 2: VIEWING THE LEDGER ---
+// --- MODE 2: LEDGER VIEW ---
 if ($student_id) {
     include '../includes/header.php';
     ?>
-    <div class="container py-5">
-        <div class="d-flex justify-content-between align-items-center mb-4">
-            <h2 class="fw-bold">Student Payment History</h2>
-            <a href="fees.php" class="btn btn-secondary rounded-pill px-4">Back to List</a>
-        </div>
-
-        <div class="card shadow-sm border-0 rounded-4 overflow-hidden">
-            <table class="table table-hover align-middle mb-0">
-                <thead class="table-dark">
-                    <tr>
-                        <th class="ps-4">Receipt #</th>
-                        <th>Fee Type</th>
-                        <th>Amount</th>
-                        <th>Date</th>
-                        <th class="text-center">Action</th>
-                    </tr>
-                </thead>
-                <tbody>
-                    <?php
-                    $stmt = $pdo->prepare("SELECT * FROM fees WHERE student_id = ? ORDER BY id DESC");
-                    $stmt->execute([$student_id]);
-                    $rows = $stmt->fetchAll();
-
-                    if ($rows) {
-                        foreach ($rows as $row) {
-                            $type = ($row['amount'] == 800) ? 'Admission' : 'Monthly';
+    <div class="container py-4">
+        <div class="card shadow-sm border-0">
+            <div class="card-header bg-white d-flex justify-content-between align-items-center">
+                <h4 class="mb-0 fw-bold">Fee History</h4>
+                <a href="fees.php" class="btn btn-outline-dark btn-sm">Back</a>
+            </div>
+            <div class="table-responsive">
+                <table class="table table-hover mb-0">
+                    <thead class="table-light">
+                        <tr>
+                            <th>Receipt #</th>
+                            <th>Amount</th>
+                            <th>Date</th>
+                            <th class="text-center">Action</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        <?php
+                        $stmt = $pdo->prepare("SELECT * FROM fees WHERE student_id = ? ORDER BY id DESC");
+                        $stmt->execute([$student_id]);
+                        while ($row = $stmt->fetch()) {
                             echo "<tr>
-                                <td class='ps-4 fw-bold'>#{$row['receipt_number']}</td>
-                                <td><span class='badge bg-light text-dark border'>$type</span></td>
-                                <td class='fw-bold'>" . number_format($row['amount']) . " PKR</td>
+                                <td class='fw-bold'>#{$row['receipt_number']}</td>
+                                <td>" . number_format($row['amount']) . " PKR</td>
                                 <td>" . date('d M, Y', strtotime($row['payment_date'])) . "</td>
                                 <td class='text-center'>
-                                    <a href='receipts.php?print={$row['id']}' target='_blank' class='btn btn-primary btn-sm rounded-pill px-3'>Print Receipt</a>
+                                    <a href='receipts.php?print={$row['id']}' target='_blank' class='btn btn-primary btn-sm rounded-pill'>Print</a>
                                 </td>
                             </tr>";
                         }
-                    } else {
-                        echo "<tr><td colspan='5' class='text-center py-4'>No payment history found.</td></tr>";
-                    }
-                    ?>
-                </tbody>
-            </table>
+                        ?>
+                    </tbody>
+                </table>
+            </div>
         </div>
     </div>
     <?php
     include '../includes/footer.php';
 } else {
-    die("<div style='text-align:center; margin-top:100px;'><h1>Invalid Access</h1><p>Please select a student from Fees Management.</p></div>");
+    die("<div style='text-align:center; padding:100px;'><h3>Please select a student first.</h3><a href='fees.php'>Go Back</a></div>");
 }
