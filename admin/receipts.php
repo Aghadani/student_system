@@ -2,13 +2,12 @@
 require_once '../config.php';
 require_once '../includes/auth_check.php';
 
-// 1. Capture variables from URL
-$student_id = isset($_GET['student_id']) ? $_GET['student_id'] : null;
-$receipt_id = isset($_GET['print']) ? $_GET['print'] : null;
+// 1. Capture variables from URL safely (The ?? null prevents the Warning)
+$student_id = $_GET['student_id'] ?? null;
+$receipt_id = $_GET['print'] ?? null;
 
 // --- MODE 1: PRINTING A SPECIFIC RECEIPT ---
 if ($receipt_id) {
-    // We join students and classes to get Father's Name and Class Name
     $stmt = $pdo->prepare("
         SELECT f.*, s.id as sid, s.name as student_name, s.father_name, c.class_name 
         FROM fees f 
